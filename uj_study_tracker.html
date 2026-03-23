@@ -4,7 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UJ Study">
+<meta name="theme-color" content="#0a0e14">
 <title>UJ Study Time Tracker</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230a0e14'/><text x='32' y='44' font-family='monospace' font-size='28' font-weight='bold' fill='%2300d4ff' text-anchor='middle'>UJ</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0e14'/><text x='90' y='122' font-family='monospace' font-size='80' font-weight='bold' fill='%2300d4ff' text-anchor='middle'>UJ</text></svg>">
+<script>
+// Inline PWA manifest
+const mf = {
+  name: "UJ Study Time Tracker",
+  short_name: "UJ Study",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#0a0e14",
+  theme_color: "#0a0e14",
+  icons: [{
+    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='44' fill='%230a0e14'/><text x='96' y='130' font-family='monospace' font-size='90' font-weight='bold' fill='%2300d4ff' text-anchor='middle'>UJ</text></svg>",
+    sizes: "192x192", type: "image/svg+xml"
+  }]
+};
+const blob = new Blob([JSON.stringify(mf)], {type:'application/json'});
+const mfUrl = URL.createObjectURL(blob);
+const lnk = document.createElement('link');
+lnk.rel='manifest'; lnk.href=mfUrl;
+document.head.appendChild(lnk);
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+KR:wght@400;700&display=swap');
 :root {
@@ -286,12 +311,9 @@ select:focus{border-color:var(--accent);}
 <!-- EXPORT / IMPORT -->
 <div class="panel" id="backupPanel">
   <div class="p-label">데이터 백업 / 복원</div>
-  <div style="font-family:var(--sans);font-size:13px;color:var(--dim);margin-bottom:14px;line-height:1.6;">
-    다른 기기와 공유하려면 내보내기 → 파일 전송 → 가져오기 순서로 하세요.
-  </div>
   <div style="display:flex;gap:10px;width:100%;">
-    <button class="io-btn io-exp" onclick="doExport()">📤 내보내기</button>
-    <button class="io-btn io-imp" onclick="document.getElementById('ioFile').click()">📥 가져오기</button>
+    <button class="io-btn io-exp" onclick="doExport()">내보내기</button>
+    <button class="io-btn io-imp" onclick="document.getElementById('ioFile').click()">가져오기</button>
   </div>
   <input type="file" id="ioFile" accept=".txt" style="display:none" onchange="doImport(event)">
   <div id="ioInfo" style="font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:12px;text-align:center;"></div>
