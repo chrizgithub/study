@@ -191,6 +191,48 @@ select:focus{border-color:var(--accent);}
 .io-imp{background:transparent;color:var(--accent2);border:1px solid var(--accent2);}
 .io-exp:active,.io-imp:active{opacity:.6;}
 
+/* TIMER */
+.timer-panel{background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:20px 16px;margin-bottom:14px;width:100%;
+  text-align:center;}
+.timer-panel.running{border-color:var(--accent2);
+  box-shadow:0 0 20px rgba(0,255,157,.1);}
+.timer-state{font-family:var(--sans);font-size:13px;color:var(--dim);
+  margin-bottom:6px;letter-spacing:.3px;}
+.timer-state.on{color:var(--accent2);}
+.timer-elapsed{font-family:var(--mono);font-size:48px;font-weight:bold;
+  color:var(--text);line-height:1;margin-bottom:4px;letter-spacing:2px;}
+.timer-elapsed.on{color:var(--accent2);}
+.timer-since{font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:18px;}
+.btn-timer-start{width:100%;border:none;border-radius:10px;
+  background:var(--accent2);color:var(--bg);
+  font-family:var(--sans);font-size:22px;font-weight:700;
+  padding:22px 0;cursor:pointer;touch-action:manipulation;
+  box-shadow:0 4px 20px rgba(0,255,157,.3);transition:all .15s;}
+.btn-timer-start:active{opacity:.8;transform:scale(.98);}
+.btn-timer-stop{width:100%;border:none;border-radius:10px;
+  background:var(--accent3);color:#fff;
+  font-family:var(--sans);font-size:22px;font-weight:700;
+  padding:22px 0;cursor:pointer;touch-action:manipulation;
+  box-shadow:0 4px 20px rgba(255,107,53,.3);transition:all .15s;}
+.btn-timer-stop:active{opacity:.8;transform:scale(.98);}
+.timer-cancel{margin-top:10px;background:transparent;border:none;
+  color:var(--dim);font-family:var(--sans);font-size:13px;
+  cursor:pointer;touch-action:manipulation;padding:6px;text-decoration:underline;}
+
+/* MANUAL ACCORDION */
+.acc-toggle{width:100%;background:transparent;border:1px solid var(--border);
+  border-radius:8px;color:var(--dim);font-family:var(--sans);font-size:14px;
+  font-weight:600;padding:12px 16px;cursor:pointer;text-align:left;
+  touch-action:manipulation;display:flex;justify-content:space-between;
+  align-items:center;margin-bottom:0;}
+.acc-toggle.open{border-color:var(--accent);color:var(--accent);
+  border-radius:8px 8px 0 0;}
+.acc-body{display:none;border:1px solid var(--accent);border-top:none;
+  border-radius:0 0 8px 8px;padding:16px;margin-bottom:14px;
+  background:var(--panel);}
+.acc-body.open{display:block;}
+
 /* TOAST */
 .toast{position:fixed;bottom:30px;left:50%;
   transform:translateX(-50%) translateY(20px);
@@ -215,9 +257,20 @@ select:focus{border-color:var(--accent);}
   </div>
 </div>
 
-<!-- INPUT -->
-<div class="panel">
-  <div class="p-title">공부 시간 입력</div>
+<!-- TIMER -->
+<div class="timer-panel" id="timerPanel">
+  <div class="timer-state" id="timerState">공부 시작 버튼을 눌러주세요</div>
+  <div class="timer-elapsed" id="timerElapsed">00:00:00</div>
+  <div class="timer-since" id="timerSince"></div>
+  <button class="btn-timer-start" id="timerBtn" onclick="timerToggle()">공부 시작</button>
+  <button class="timer-cancel" id="timerCancel" style="display:none" onclick="timerCancel()">취소 (기록 안 함)</button>
+</div>
+
+<!-- MANUAL INPUT ACCORDION -->
+<button class="acc-toggle" id="accBtn" onclick="toggleAcc()">
+  <span>✎ 직접 입력 (과거 기록 추가)</span><span id="accArrow">▼</span>
+</button>
+<div class="acc-body" id="accBody">
   <div class="tgrid">
     <div class="tgrp">
       <span>시작</span>
@@ -245,7 +298,7 @@ select:focus{border-color:var(--accent);}
       </div>
     </div>
   </div>
-  <div class="brow">
+  <div class="brow" style="margin-top:14px;">
     <button class="btn btn-save" onclick="doSave()">저장</button>
     <button class="btn btn-now"  onclick="doNow()">현재 시간 종료</button>
   </div>
@@ -383,6 +436,140 @@ function setMin(side, total) {
   setAP(side, val);
   document.getElementById(side+'H').value = h12;
   document.getElementById(side+'M').value = m;
+}
+
+/* ── Accordion ── */
+function toggleAcc() {
+  const body = document.getElementById('accBody');
+  const btn  = document.getElementById('accBtn');
+  const arr  = document.getElementById('accArrow');
+  const open = body.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  arr.textContent = open ? '▲' : '▼';
+}
+
+/* ── Timer ── */
+const TKEY = 'ujTimer';
+let timerTick = null;
+
+function timerLoad() {
+  try { return JSON.parse(localStorage.getItem(TKEY)); } catch(e) { return null; }
+}
+function timerSave(obj) {
+  localStorage.setItem(TKEY, JSON.stringify(obj));
+}
+function timerClear() {
+  localStorage.removeItem(TKEY);
+}
+
+function elapsed(startMs) {
+  const sec = Math.floor((Date.now() - startMs) / 1000);
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  const s = sec%60;
+  return p2(h)+':'+p2(m)+':'+p2(s);
+}
+function elapsedMin(startMs) {
+  return Math.floor((Date.now() - startMs) / 60000);
+}
+
+function timerRenderIdle() {
+  const panel = document.getElementById('timerPanel');
+  const state = document.getElementById('timerState');
+  const el    = document.getElementById('timerElapsed');
+  const since = document.getElementById('timerSince');
+  const btn   = document.getElementById('timerBtn');
+  const cancel= document.getElementById('timerCancel');
+  panel.classList.remove('running');
+  state.className = 'timer-state';
+  state.textContent = '공부 시작 버튼을 눌러주세요';
+  el.className = 'timer-elapsed';
+  el.textContent = '00:00:00';
+  since.textContent = '';
+  btn.className = 'btn-timer-start';
+  btn.textContent = '공부 시작';
+  cancel.style.display = 'none';
+  clearInterval(timerTick); timerTick = null;
+}
+
+function timerRenderRunning(startMs) {
+  const panel = document.getElementById('timerPanel');
+  const state = document.getElementById('timerState');
+  const el    = document.getElementById('timerElapsed');
+  const since = document.getElementById('timerSince');
+  const btn   = document.getElementById('timerBtn');
+  const cancel= document.getElementById('timerCancel');
+
+  const startDate = new Date(startMs);
+  const ap = startDate.getHours()<12?'오전':'오후';
+  let h12 = startDate.getHours()%12; if(!h12)h12=12;
+  const sinceStr = ap+' '+h12+':'+p2(startDate.getMinutes())+' 시작';
+
+  panel.classList.add('running');
+  state.className = 'timer-state on';
+  state.textContent = '공부 중 🟢';
+  el.className = 'timer-elapsed on';
+  since.textContent = sinceStr;
+  btn.className = 'btn-timer-stop';
+  btn.textContent = '공부 완료';
+  cancel.style.display = 'block';
+
+  clearInterval(timerTick);
+  const update = () => el.textContent = elapsed(startMs);
+  update();
+  timerTick = setInterval(update, 1000);
+}
+
+function timerToggle() {
+  const t = timerLoad();
+  if (!t) {
+    // START
+    const startMs = Date.now();
+    timerSave({ startMs });
+    timerRenderRunning(startMs);
+  } else {
+    // STOP → save record
+    const startMs = t.startMs;
+    const endMs   = Date.now();
+    const s = Math.floor(startMs/60000) % (24*60); // minutes from midnight
+    const e = Math.floor(endMs  /60000) % (24*60);
+
+    // Use the date of startMs for the key
+    const d = new Date(startMs);
+    const key = d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+
+    const dur = Math.round((endMs - startMs) / 60000);
+    if (dur < 1) { showToast('⚠ 1분 이상 공부해야 저장돼요'); return; }
+
+    const data = load();
+    if (!data[key]) data[key] = [];
+    data[key].push({s, e, dur});
+    data[key].sort((a,b) => a.s-b.s);
+    save(data);
+    timerClear();
+    timerRenderIdle();
+    viewDay = new Date(startMs);
+    showToast('✓ '+fmtMin(dur)+' 저장됨!');
+    renderDay();
+    if(curTab==='month') renderMonth();
+    if(curTab==='year')  renderYear();
+    updateInfo();
+  }
+}
+
+function timerCancel() {
+  if (!confirm('타이머를 취소할까요? 기록되지 않습니다.')) return;
+  timerClear();
+  timerRenderIdle();
+}
+
+function timerInit() {
+  const t = timerLoad();
+  if (t && t.startMs) {
+    timerRenderRunning(t.startMs);
+  } else {
+    timerRenderIdle();
+  }
 }
 
 /* ── Build selects ── */
@@ -846,6 +1033,7 @@ function updateInfo() {
 buildSel();
 tick();
 setInterval(tick, 1000);
+timerInit();
 renderDay();
 updateInfo();
 </script>
