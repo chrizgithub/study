@@ -261,9 +261,17 @@ select:focus{border-color:var(--accent);}
 <!-- DAY VIEW -->
 <div id="vDay">
   <div class="panel">
+    <div class="pnav">
+      <button class="nb" onclick="navDay(-1)">◀</button>
+      <div style="flex:1;text-align:center;">
+        <div class="pl" id="dayNavLabel" style="font-size:20px;"></div>
+        <div id="dayNavSub" style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:2px;"></div>
+      </div>
+      <button class="nb" id="dayNavNext" onclick="navDay(1)">▶</button>
+    </div>
     <div class="ctop">
-      <span class="cl">오늘 공부 현황</span>
-      <span class="cr" id="dayTotal">0분</span>
+      <span class="cr" id="dayTotal" style="font-size:18px;">0분</span>
+      <span id="dayCmp" style="font-family:var(--mono);font-size:12px;color:var(--dim);"></span>
     </div>
     <div class="chart-wrap">
       <div class="bars day-bars" id="dayBars"></div>
@@ -271,7 +279,7 @@ select:focus{border-color:var(--accent);}
     </div>
   </div>
   <div class="panel">
-    <div class="p-label">오늘 기록 <span style="font-size:12px;font-weight:400;color:var(--dim);">탭하여 수정</span></div>
+    <div class="p-label" id="logPanelLabel">오늘 기록 <span style="font-size:12px;font-weight:400;color:var(--dim);">탭하여 수정</span></div>
     <div class="logs" id="logList"></div>
   </div>
 </div>
@@ -406,6 +414,7 @@ function doSave() {
   data[key].push({s, e, dur: e-s});
   data[key].sort((a,b) => a.s - b.s);
   save(data);
+  viewDay = new Date(); // 저장 후 오늘로 이동
   showToast('✓ '+fmtMin(e-s)+' 저장됨');
   renderDay();
   if (curTab==='month') renderMonth();
@@ -424,9 +433,26 @@ function showToast(msg) {
 
 /* ── Day view ── */
 let editIdx = -1;
+let viewDay = new Date(); // currently viewed date
+
+function viewDayKey() {
+  return viewDay.getFullYear()+'-'+p2(viewDay.getMonth()+1)+'-'+p2(viewDay.getDate());
+}
+function isToday() {
+  const t = new Date();
+  return viewDay.getFullYear()===t.getFullYear()
+      && viewDay.getMonth()===t.getMonth()
+      && viewDay.getDate()===t.getDate();
+}
+function navDay(d) {
+  viewDay = new Date(viewDay);
+  viewDay.setDate(viewDay.getDate() + d);
+  editIdx = -1;
+  renderDay();
+}
 
 function renderDay() {
-  const key = todayStr();
+  const key = viewDayKey();
   const data = load();
   const logs = data[key] || [];
   const hm = new Array(24).fill(0);
@@ -437,7 +463,42 @@ function renderDay() {
   });
   const maxM = Math.max(60, ...hm);
   const total = logs.reduce((s,l) => s+l.dur, 0);
+
+  /* date nav label */
+  const today = isToday();
+  const isFuture = viewDay > new Date() && !today;
+  const wd = ['일','월','화','수','목','금','토'];
+  let dayLabel;
+  const diffMs = new Date(viewDay.getFullYear(), viewDay.getMonth(), viewDay.getDate())
+               - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const diffD = Math.round(diffMs / 86400000);
+  if (diffD === 0)       dayLabel = '오늘';
+  else if (diffD === -1) dayLabel = '어제';
+  else if (diffD === -2) dayLabel = '그제';
+  else                   dayLabel = key + ' ('+wd[viewDay.getDay()]+'요일)';
+
+  document.getElementById('dayNavLabel').textContent = dayLabel;
+  document.getElementById('dayNavSub').textContent   = diffD === 0 ? key+' ('+wd[viewDay.getDay()]+'요일)' : '';
+
+  /* compare with previous day */
+  const prevDay = new Date(viewDay); prevDay.setDate(prevDay.getDate()-1);
+  const prevKey = prevDay.getFullYear()+'-'+p2(prevDay.getMonth()+1)+'-'+p2(prevDay.getDate());
+  const prevTotal = (data[prevKey]||[]).reduce((s,l)=>s+l.dur, 0);
+  const diff = total - prevTotal;
+  let cmpText = '';
+  if (prevTotal > 0 || total > 0) {
+    if (diff > 0)       cmpText = '▲ 전날보다 '+fmtMin(diff)+' 더 많음';
+    else if (diff < 0)  cmpText = '▼ 전날보다 '+fmtMin(-diff)+' 적음';
+    else if (total > 0) cmpText = '= 전날과 동일';
+  }
+  document.getElementById('dayCmp').textContent = cmpText;
+
+  /* future day: hide input hint */
   document.getElementById('dayTotal').textContent = '총 '+fmtMin(total);
+
+  /* next button disabled if today */
+  document.getElementById('dayNavNext').style.opacity = today ? '0.2' : '1';
+  document.getElementById('dayNavNext').disabled = today;
 
   /* chart */
   const wrap = document.getElementById('dayBars');
@@ -447,7 +508,7 @@ function renderDay() {
   for (let h=0; h<24; h++) {
     const unit = document.createElement('div'); unit.className='bunit';
     const bar  = document.createElement('div');
-    bar.className = 'bar bar-day' + (hm[h]>0?' lit':'') + (h===nowH?' now':'');
+    bar.className = 'bar bar-day' + (hm[h]>0?' lit':'') + (isToday()&&h===nowH?' now':'');
     bar.style.height = Math.round((hm[h]/maxM)*CH)+'px';
     const lbl = document.createElement('div'); lbl.className='blbl';
     if (h%6===0) {
@@ -462,9 +523,11 @@ function renderDay() {
 
   /* logs */
   const logDiv = document.getElementById('logList');
+  const logLabel = document.getElementById('logPanelLabel');
+  logLabel.innerHTML = (isToday() ? '오늘' : dayLabel)+' 기록 <span style="font-size:12px;font-weight:400;color:var(--dim);">'+(isToday()?'탭하여 수정':'')+'</span>';
   logDiv.innerHTML = '';
   if (!logs.length) {
-    logDiv.innerHTML = '<div class="empty">아직 기록이 없어요</div>'; return;
+    logDiv.innerHTML = '<div class="empty">기록이 없어요</div>'; return;
   }
   logs.forEach((l, i) => {
     /* log row */
@@ -538,8 +601,9 @@ function renderDay() {
       const ns = readEdit('s'), ne = readEdit('e');
       if (ne<=ns) { showToast('⚠ 종료 시간을 확인해주세요'); return; }
       const data = load();
-      data[key][i] = {s:ns, e:ne, dur:ne-ns};
-      data[key].sort((a,b) => a.s-b.s);
+      const k = viewDayKey();
+      data[k][i] = {s:ns, e:ne, dur:ne-ns};
+      data[k].sort((a,b) => a.s-b.s);
       save(data); editIdx=-1;
       showToast('✓ 수정 완료'); renderDay();
       if(curTab==='month') renderMonth();
@@ -548,7 +612,8 @@ function renderDay() {
     const eDel = document.createElement('button'); eDel.className='e-del'; eDel.textContent='삭제';
     eDel.addEventListener('click', () => {
       const data = load();
-      if (data[key]) { data[key].splice(i,1); }
+      const k = viewDayKey();
+      if (data[k]) { data[k].splice(i,1); }
       save(data); editIdx=-1;
       showToast('삭제됨'); renderDay();
       if(curTab==='month') renderMonth();
