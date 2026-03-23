@@ -158,6 +158,14 @@ select:focus{border-color:var(--accent);}
   padding:13px 0;cursor:pointer;touch-action:manipulation;}
 .e-del:active{opacity:.6;}
 
+/* IO BUTTONS */
+.io-btn{flex:1;border:none;border-radius:8px;font-family:var(--sans);font-size:15px;
+  font-weight:700;padding:14px 0;cursor:pointer;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;transition:opacity .15s;}
+.io-exp{background:var(--accent);color:var(--bg);}
+.io-imp{background:transparent;color:var(--accent2);border:1px solid var(--accent2);}
+.io-exp:active,.io-imp:active{opacity:.6;}
+
 /* TOAST */
 .toast{position:fixed;bottom:30px;left:50%;
   transform:translateX(-50%) translateY(20px);
@@ -273,6 +281,20 @@ select:focus{border-color:var(--accent);}
       <div class="bline"></div>
     </div>
   </div>
+</div>
+
+<!-- EXPORT / IMPORT -->
+<div class="panel" id="backupPanel">
+  <div class="p-label">데이터 백업 / 복원</div>
+  <div style="font-family:var(--sans);font-size:13px;color:var(--dim);margin-bottom:14px;line-height:1.6;">
+    다른 기기와 공유하려면 내보내기 → 파일 전송 → 가져오기 순서로 하세요.
+  </div>
+  <div style="display:flex;gap:10px;width:100%;">
+    <button class="io-btn io-exp" onclick="doExport()">📤 내보내기</button>
+    <button class="io-btn io-imp" onclick="document.getElementById('ioFile').click()">📥 가져오기</button>
+  </div>
+  <input type="file" id="ioFile" accept=".txt" style="display:none" onchange="doImport(event)">
+  <div id="ioInfo" style="font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:12px;text-align:center;"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -610,11 +632,135 @@ function tick() {
   document.getElementById('hDay').textContent = DAYS[now.getDay()]+'요일';
 }
 
+/* ── Export / Import ── */
+const WEEK = ['일','월','화','수','목','금','토'];
+
+function totalMin24(h24str) {
+  const [h,m] = h24str.split(':').map(Number);
+  return h*60+m;
+}
+function fmt24(total) {
+  return p2(Math.floor(total/60))+':'+p2(total%60);
+}
+function fmtMinKo(m) {
+  if (!m||m<=0) return '0분';
+  const h=Math.floor(m/60), r=m%60;
+  if (h===0) return r+'분';
+  return r ? h+'시간 '+r+'분' : h+'시간';
+}
+function dateLabel(key) {
+  const [y,mo,d] = key.split('-').map(Number);
+  const dow = new Date(y,mo-1,d).getDay();
+  return key+' ('+WEEK[dow]+'요일)';
+}
+
+function doExport() {
+  const data = load();
+  const keys = Object.keys(data).sort();
+  if (!keys.length) { showToast('⚠ 내보낼 데이터가 없어요'); return; }
+
+  const lines = [];
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('  UJ Study Time Tracker');
+  lines.push('  내보내기: '+new Date().toLocaleString('ko-KR'));
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('');
+
+  let grandTotal = 0;
+  keys.forEach(key => {
+    const logs = (data[key]||[]).filter(l=>l.s!=null&&l.e!=null);
+    if (!logs.length) return;
+    const dayTotal = logs.reduce((s,l)=>s+l.dur,0);
+    grandTotal += dayTotal;
+    lines.push('[ '+dateLabel(key)+' ]');
+    logs.forEach(l => {
+      const pad = '  ';
+      const timeStr = fmt24(l.s)+' ~ '+fmt24(l.e);
+      const durStr  = fmtMinKo(l.dur);
+      // align duration at col 22
+      const gap = Math.max(1, 22 - timeStr.length);
+      lines.push(pad + timeStr + ' '.repeat(gap) + durStr);
+    });
+    lines.push('  ─ 합계: '+fmtMinKo(dayTotal));
+    lines.push('');
+  });
+
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('  전체 합계: '+fmtMinKo(grandTotal));
+  lines.push('  총 '+keys.length+'일 기록');
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  const txt = lines.join('\n');
+  const blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const d    = new Date();
+  a.href = url;
+  a.download = 'uj_study_'+d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'.txt';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ txt 파일 저장됨');
+  updateInfo();
+}
+
+function doImport(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const lines = e.target.result.split('\n');
+      const data  = load();
+      let curKey  = null;
+      let added=0, skipped=0;
+      // Pattern: YYYY-MM-DD (요일)
+      const rDate = /\[\s*(\d{4}-\d{2}-\d{2})/;
+      // Pattern: HH:MM ~ HH:MM
+      const rLog  = /(\d{2}:\d{2})\s*~\s*(\d{2}:\d{2})/;
+      lines.forEach(line => {
+        const dm = line.match(rDate);
+        if (dm) { curKey = dm[1]; return; }
+        if (!curKey) return;
+        const lm = line.match(rLog);
+        if (!lm) return;
+        const s = totalMin24(lm[1]), e = totalMin24(lm[2]);
+        if (e <= s) { skipped++; return; }
+        if (!data[curKey]) data[curKey] = [];
+        // deduplicate
+        const exists = data[curKey].some(l => l.s===s && l.e===e);
+        if (!exists) { data[curKey].push({s, e, dur:e-s}); added++; }
+        else skipped++;
+      });
+      Object.keys(data).forEach(k => data[k].sort((a,b)=>a.s-b.s));
+      save(data);
+      showToast('✓ '+added+'개 추가됨'+(skipped?' ('+skipped+'개 중복)':''));
+      renderDay();
+      if(curTab==='month') renderMonth();
+      if(curTab==='year')  renderYear();
+      updateInfo();
+    } catch(err) {
+      showToast('⚠ 파일을 읽을 수 없어요');
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+  evt.target.value = '';
+}
+
+function updateInfo() {
+  const data = load();
+  const keys = Object.keys(data).filter(k => (data[k]||[]).length > 0);
+  const sessions = keys.reduce((s,k) => s+(data[k]||[]).length, 0);
+  const el = document.getElementById('ioInfo');
+  if (el) el.textContent = keys.length+'일 · '+sessions+'개 세션 저장됨';
+}
+
 /* ── Boot ── */
 buildSel();
 tick();
 setInterval(tick, 1000);
 renderDay();
+updateInfo();
 </script>
 </body>
 </html>
