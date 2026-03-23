@@ -232,6 +232,7 @@ select:focus{border-color:var(--accent);}
   border-radius:0 0 8px 8px;padding:16px;margin-bottom:14px;
   background:var(--panel);}
 .acc-body.open{display:block;}
+.acc-closed-gap{margin-bottom:14px;}
 
 /* TOAST */
 .toast{position:fixed;bottom:30px;left:50%;
@@ -303,6 +304,8 @@ select:focus{border-color:var(--accent);}
     <button class="btn btn-now"  onclick="doNow()">현재 시간 종료</button>
   </div>
 </div>
+
+<div class="acc-closed-gap" id="accGap"></div>
 
 <!-- TABS -->
 <div class="tabs">
@@ -443,9 +446,11 @@ function toggleAcc() {
   const body = document.getElementById('accBody');
   const btn  = document.getElementById('accBtn');
   const arr  = document.getElementById('accArrow');
+  const gap  = document.getElementById('accGap');
   const open = body.classList.toggle('open');
   btn.classList.toggle('open', open);
   arr.textContent = open ? '▲' : '▼';
+  gap.style.display = open ? 'none' : 'block';
 }
 
 /* ── Timer ── */
