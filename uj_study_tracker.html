@@ -536,8 +536,10 @@ function timerToggle() {
     // STOP → save record
     const startMs = t.startMs;
     const endMs   = Date.now();
-    const s = Math.floor(startMs/60000) % (24*60); // minutes from midnight
-    const e = Math.floor(endMs  /60000) % (24*60);
+    const sDate = new Date(startMs);
+    const eDate = new Date(endMs);
+    const s = sDate.getHours() * 60 + sDate.getMinutes(); // local time
+    const e = eDate.getHours() * 60 + eDate.getMinutes(); // local time
 
     // Use the date of startMs for the key
     const d = new Date(startMs);
