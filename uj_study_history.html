@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0e14">
+<title>UJ Study — 전체 기록</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e14;
+  --panel: #0f1520;
+  --panel2: #111826;
+  --border: #1e2d40;
+  --accent: #00d4ff;
+  --accent2: #00ff9d;
+  --accent3: #ff6b35;
+  --purple: #a78bfa;
+  --text: #c8d8e8;
+  --dim: #4a6070;
+  --dim2: #2e4055;
+  --mono: 'Share Tech Mono', monospace;
+  --sans: 'Noto Sans KR', sans-serif;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  padding: 0 0 60px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── HEADER ── */
+.hdr {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10,14,20,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hdr-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  opacity: .85;
+  margin-bottom: 3px;
+}
+
+.hdr-sub {
+  font-family: var(--mono);
+  font-size: 20px;
+  color: var(--text);
+  letter-spacing: 1px;
+}
+
+.hdr-stats {
+  text-align: right;
+}
+
+.hdr-total {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--accent2);
+  margin-bottom: 2px;
+}
+
+.hdr-days {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--dim);
+}
+
+/* ── SORT / FILTER BAR ── */
+.ctrl-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ctrl-bar::-webkit-scrollbar { display: none; }
+
+.ctrl-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.ctrl-btn.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,212,255,.08);
+}
+
+/* ── SUMMARY STRIP ── */
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.s-card {
+  background: var(--panel);
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.s-val {
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--accent2);
+  margin-bottom: 3px;
+}
+
+.s-lbl {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: .5px;
+}
+
+/* ── LIST AREA ── */
+.list-wrap {
+  padding: 14px 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── DAY CARD ── */
+.day-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  animation: fadeUp .35s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.day-card.today {
+  border-color: rgba(0,212,255,.35);
+  box-shadow: 0 0 20px rgba(0,212,255,.07);
+}
+
+.day-card.today .day-head {
+  background: rgba(0,212,255,.06);
+}
+
+/* ── DAY HEAD ── */
+.day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.day-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.day-date {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: .5px;
+}
+
+.day-dow {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.today-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--bg);
+  background: var(--accent);
+  padding: 2px 6px;
+  border-radius: 10px;
+  letter-spacing: 1px;
+}
+
+.day-total {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--accent2);
+  letter-spacing: .5px;
+}
+
+/* ── BAR GRAPH ── */
+.bar-area {
+  padding: 10px 14px 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 52px;
+  position: relative;
+}
+
+/* 24-hour timeline bar */
+.timeline-bar {
+  width: 100%;
+  height: 14px;
+  background: var(--panel2);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--dim2);
+}
+
+.session-seg {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), rgba(0,180,220,.7));
+  border-radius: 2px;
+}
+
+/* hour tick labels */
+.timeline-wrap {
+  padding: 6px 14px 10px;
+}
+
+.tick-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--dim);
+  margin-top: 4px;
+  padding: 0 1px;
+}
+
+/* ── SESSION LIST ── */
+.sess-list {
+  padding: 0 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sess-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.sess-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  box-shadow: 0 0 5px rgba(0,212,255,.5);
+}
+
+.sess-time {
+  color: var(--text);
+  flex: 1;
+}
+
+.sess-dur {
+  color: var(--accent2);
+  flex-shrink: 0;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--dim);
+  opacity: .6;
+}
+
+/* ── NO DATA ── */
+.no-data {
+  margin: 40px 16px;
+  padding: 30px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.no-data-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.no-data-title {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.no-data-desc {
+  font-size: 13px;
+  color: var(--dim);
+  line-height: 1.6;
+}
+
+/* ── SCROLL TO TOP ── */
+.top-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 14px rgba(0,212,255,.2);
+  opacity: 0;
+  transition: opacity .3s;
+  z-index: 50;
+}
+
+.top-btn.show { opacity: 1; }
+
+/* ── MONTH DIVIDER ── */
+.month-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px 6px;
+}
+
+.month-divider-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.month-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.month-divider-total {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--purple);
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <div class="hdr-title">UJ Study Tracker</div>
+    <div class="hdr-sub" id="hdrSub">전체 기록</div>
+  </div>
+  <div class="hdr-stats">
+    <div class="hdr-total" id="hdrTotal">—</div>
+    <div class="hdr-days" id="hdrDays">—</div>
+  </div>
+</div>
+
+<!-- SORT / ORDER BAR -->
+<div class="ctrl-bar">
+  <button class="ctrl-btn on" id="btnDesc" onclick="setOrder('desc')">최신순 ↓</button>
+  <button class="ctrl-btn" id="btnAsc"  onclick="setOrder('asc')">오래된순 ↑</button>
+  <button class="ctrl-btn on" id="btnAll" onclick="setFilter('all')">전체</button>
+  <button class="ctrl-btn" id="btnHas" onclick="setFilter('has')">기록 있는 날만</button>
+</div>
+
+<!-- SUMMARY STRIP -->
+<div class="summary-strip">
+  <div class="s-card">
+    <div class="s-val" id="sAvg">—</div>
+    <div class="s-lbl">일 평균</div>
+  </div>
+  <div class="s-card">
+    <div class="s-val" id="sBest">—</div>
+    <div class="s-lbl">최고 기록</div>
+  </div>
+  <div class="s-card">
+    <div class="s-val" id="sStreak">—</div>
+    <div class="s-lbl">연속 공부</div>
+  </div>
+</div>
+
+<!-- LIST -->
+<div class="list-wrap" id="listWrap"></div>
+
+<button class="top-btn" id="topBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+'use strict';
+
+const KEY = 'ujStudy';
+const p2 = n => String(n).padStart(2, '0');
+const DAYS = ['일','월','화','수','목','금','토'];
+const MONTHS_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function fmtMin(m) {
+  if (!m || m <= 0) return '0분';
+  const h = Math.floor(m / 60), r = m % 60;
+  if (h === 0) return r + '분';
+  return r ? h + 'h ' + r + 'm' : h + 'h';
+}
+
+function disp(total) {
+  const h24 = Math.floor(total / 60), m = total % 60;
+  const ap = h24 < 12 ? '오전' : '오후';
+  let h12 = h24 % 12;
+  if (!h12) h12 = 12;
+  return ap + ' ' + h12 + ':' + p2(m);
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+}
+
+/* ── State ── */
+let sortOrder = 'desc'; // 'desc' | 'asc'
+let filterMode = 'all'; // 'all' | 'has'
+
+function setOrder(o) {
+  sortOrder = o;
+  document.getElementById('btnDesc').classList.toggle('on', o === 'desc');
+  document.getElementById('btnAsc').classList.toggle('on', o === 'asc');
+  renderAll();
+}
+
+function setFilter(f) {
+  filterMode = f;
+  document.getElementById('btnAll').classList.toggle('on', f === 'all');
+  document.getElementById('btnHas').classList.toggle('on', f === 'has');
+  renderAll();
+}
+
+/* ── Stats ── */
+function calcStats(data) {
+  const keys = Object.keys(data).filter(k => (data[k] || []).length > 0).sort();
+  if (!keys.length) return { total: 0, days: 0, avg: 0, best: 0, bestDay: '', streak: 0 };
+
+  let total = 0, best = 0, bestDay = '';
+  keys.forEach(k => {
+    const t = (data[k] || []).reduce((s, l) => s + l.dur, 0);
+    total += t;
+    if (t > best) { best = t; bestDay = k; }
+  });
+
+  // streak: consecutive days ending today or yesterday
+  let streak = 0;
+  const today = todayStr();
+  let cur = new Date();
+  // go back from today
+  for (let i = 0; i < 365; i++) {
+    const d = cur.getFullYear() + '-' + p2(cur.getMonth() + 1) + '-' + p2(cur.getDate());
+    const dayTotal = (data[d] || []).reduce((s, l) => s + l.dur, 0);
+    if (dayTotal > 0) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    } else {
+      if (i === 0) {
+        // today has no data, check yesterday
+        cur.setDate(cur.getDate() - 1);
+        continue;
+      }
+      break;
+    }
+  }
+
+  return { total, days: keys.length, avg: Math.round(total / keys.length), best, bestDay, streak };
+}
+
+/* ── Build date range ── */
+function buildDateRange(data) {
+  const dataKeys = Object.keys(data).filter(k => (data[k] || []).length > 0).sort();
+  if (!dataKeys.length) return [];
+
+  if (filterMode === 'has') return [...dataKeys].sort(sortOrder === 'asc' ? undefined : (a, b) => b.localeCompare(a));
+
+  // 'all': from earliest data day to today
+  const startStr = dataKeys[0];
+  const endDate = new Date();
+  const start = new Date(startStr);
+  const range = [];
+  let cur = new Date(start);
+  while (cur <= endDate) {
+    const s = cur.getFullYear() + '-' + p2(cur.getMonth() + 1) + '-' + p2(cur.getDate());
+    range.push(s);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return sortOrder === 'desc' ? range.reverse() : range;
+}
+
+/* ── Month groups ── */
+function groupByMonth(dates, data) {
+  const groups = [];
+  let curMon = null, curGroup = null;
+
+  dates.forEach(d => {
+    const mon = d.slice(0, 7); // YYYY-MM
+    if (mon !== curMon) {
+      curMon = mon;
+      curGroup = { month: mon, dates: [] };
+      groups.push(curGroup);
+    }
+    curGroup.dates.push(d);
+  });
+
+  return groups;
+}
+
+/* ── Render day card ── */
+function buildCard(dateStr, logs, isToday) {
+  const total = logs.reduce((s, l) => s + l.dur, 0);
+  const [y, mo, dd] = dateStr.split('-').map(Number);
+  const dowIdx = new Date(y, mo - 1, dd).getDay();
+  const dow = DAYS[dowIdx] + '요일';
+  const isSun = dowIdx === 0;
+  const isSat = dowIdx === 6;
+
+  const card = document.createElement('div');
+  card.className = 'day-card' + (isToday ? ' today' : '');
+  card.style.animationDelay = '0ms';
+
+  /* HEAD */
+  let metaHTML = `<div class="day-meta">
+    <span class="day-date">${dateStr}</span>
+    <span class="day-dow" style="${isSun ? 'color:#ff6b6b' : isSat ? 'color:#7ab8ff' : ''}">${dow}</span>
+    ${isToday ? '<span class="today-badge">TODAY</span>' : ''}
+  </div>
+  <span class="day-total">${fmtMin(total)}</span>`;
+
+  const head = document.createElement('div');
+  head.className = 'day-head';
+  head.innerHTML = metaHTML;
+  card.appendChild(head);
+
+  if (!logs.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.style.padding = '12px 14px';
+    empty.style.fontSize = '12px';
+    empty.textContent = '기록 없음';
+    card.appendChild(empty);
+    return card;
+  }
+
+  /* TIMELINE BAR */
+  const tlWrap = document.createElement('div');
+  tlWrap.className = 'timeline-wrap';
+
+  const bar = document.createElement('div');
+  bar.className = 'timeline-bar';
+
+  logs.forEach(l => {
+    const seg = document.createElement('div');
+    seg.className = 'session-seg';
+    const left = (l.s / (24 * 60)) * 100;
+    const width = (l.dur / (24 * 60)) * 100;
+    seg.style.left = left + '%';
+    seg.style.width = Math.max(width, 0.4) + '%';
+    bar.appendChild(seg);
+  });
+
+  tlWrap.appendChild(bar);
+
+  /* tick labels */
+  const ticks = document.createElement('div');
+  ticks.className = 'tick-row';
+  [0, 6, 12, 18, 24].forEach(h => {
+    const t = document.createElement('span');
+    t.textContent = h === 0 ? '자정' : h === 12 ? '정오' : h + '시';
+    ticks.appendChild(t);
+  });
+  tlWrap.appendChild(ticks);
+  card.appendChild(tlWrap);
+
+  /* SESSION LIST */
+  const sessList = document.createElement('div');
+  sessList.className = 'sess-list';
+
+  logs.forEach(l => {
+    const row = document.createElement('div');
+    row.className = 'sess-row';
+    row.innerHTML = `
+      <span class="sess-dot"></span>
+      <span class="sess-time">${disp(l.s)} → ${disp(l.e)}</span>
+      <span class="sess-dur">${fmtMin(l.dur)}</span>
+    `;
+    sessList.appendChild(row);
+  });
+
+  card.appendChild(sessList);
+  return card;
+}
+
+/* ── Main render ── */
+function renderAll() {
+  const data = loadData();
+  const dates = buildDateRange(data);
+  const wrap = document.getElementById('listWrap');
+  wrap.innerHTML = '';
+
+  if (!Object.keys(data).length) {
+    wrap.innerHTML = `
+      <div class="no-data">
+        <div class="no-data-icon">📚</div>
+        <div class="no-data-title">아직 기록이 없어요</div>
+        <div class="no-data-desc">uj_study_tracker.html에서<br>공부를 시작하면 여기서 확인할 수 있어요.</div>
+      </div>`;
+    return;
+  }
+
+  const stats = calcStats(data);
+  const today = todayStr();
+
+  /* header stats */
+  document.getElementById('hdrTotal').textContent = fmtMin(stats.total) + ' 공부';
+  document.getElementById('hdrDays').textContent = stats.days + '일 기록됨';
+  document.getElementById('sAvg').textContent = fmtMin(stats.avg);
+  document.getElementById('sBest').textContent = fmtMin(stats.best);
+  document.getElementById('sStreak').textContent = stats.streak + '일';
+
+  if (!dates.length) {
+    wrap.innerHTML = '<div class="no-data"><div class="no-data-desc">표시할 날짜가 없어요</div></div>';
+    return;
+  }
+
+  /* group by month */
+  const groups = groupByMonth(dates, data);
+
+  groups.forEach((group, gi) => {
+    /* month divider */
+    const [y, m] = group.month.split('-').map(Number);
+    const monthTotal = group.dates.reduce((s, d) => {
+      return s + (data[d] || []).reduce((ss, l) => ss + l.dur, 0);
+    }, 0);
+
+    const div = document.createElement('div');
+    div.className = 'month-divider';
+    div.innerHTML = `
+      <span class="month-divider-label">${y}년 ${MONTHS_KO[m - 1]}</span>
+      <span class="month-divider-line"></span>
+      <span class="month-divider-total">${fmtMin(monthTotal)}</span>
+    `;
+    wrap.appendChild(div);
+
+    group.dates.forEach((dateStr, di) => {
+      const logs = data[dateStr] || [];
+      const isToday = dateStr === today;
+
+      if (filterMode === 'has' && !logs.length) return;
+
+      const card = buildCard(dateStr, logs, isToday);
+      card.style.animationDelay = (di * 30) + 'ms';
+      wrap.appendChild(card);
+    });
+  });
+}
+
+/* ── Scroll to top btn ── */
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('topBtn');
+  btn.classList.toggle('show', window.scrollY > 300);
+});
+
+/* ── Storage change (when tracker updates) ── */
+window.addEventListener('storage', e => {
+  if (e.key === KEY) renderAll();
+});
+
+/* ── Init ── */
+renderAll();
+</script>
+</body>
+</html>
